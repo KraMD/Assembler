@@ -1,0 +1,82 @@
+.386
+      .model flat, stdcall
+      option casemap :none   ; case sensitive
+;#########################################################################
+      include \masm32\include\windows.inc
+      include \masm32\include\user32.inc
+      include \masm32\include\kernel32.inc
+      includelib \masm32\lib\user32.lib
+      includelib \masm32\lib\kernel32.lib
+;#########################################################################
+    .data
+    divisor    db 10d                   ; Переменная-делитель. Один байт, значение 10d
+    sfc        db "%.4lX",0             ; Строка формата для API-функции wsprintf
+    sResult byte 2*2+1 dup (0BBh)       ; Будущая строка с текстом числа длиной 5 байт (BB - от балды)
+    MsgCaption db "Результат ",0 ; Заголовок сообщения
+
+
+;Пример:  18 : (11 - x) +y       где: x=5 y=2 z=3 m=1 n=4
+
+; Заносим данные:
+y=2
+x=5
+
+;18 : (11 - x) +y
+
+;#########################################################################
+
+   
+
+ .code
+start:
+xor    EAX,EAX            ; обнуляем EAX
+
+;(11 - x)
+mov ax,11
+mov cx,x
+sub ax,cx
+mov cx,ax
+
+call   HexMessage         ; показать результат
+
+;18 : (11 - x)
+mov ax,18
+mov dx,0
+div cx
+mov cx,ax
+
+call   HexMessage         ; показать результат
+
+
+;18 : (11 - x) +y
+mov bx,y
+add bx,cx
+mov ax,bx    
+    
+call   HexMessage         ; показать результат
+
+
+	push   0                  ; пустой параметр для подпрограммы выхода
+	call   ExitProcess        ; вызов API-функции выхода
+;-------------------------------------------------------------------------
+HexMessage proc               ; начало функции вывода hex-сообщения
+; Вход:  EAX содержит hex-число, которое будет показано в сообщении
+; Выход: ничего.
+; Используются глобальные переменные: 
+; MsgCaption, sResult, sfc,
+pushad                        ; сохраняем в стек все 8 E-регистров общего назначения
+
+; вызов API-функции перевода числа в строку текста
+;                адрес будущей строки| адрес строки формата| число        
+invoke wsprintf, ADDR sResult,         ADDR sfc,             EAX
+
+; вызов API-функции вывода сообщения на экран
+;                  родительское окно|адрес текста| адрес заголовка| стиль
+invoke MessageBox, NULL,             addr sResult, addr MsgCaption, MB_OK 
+
+popad                         ; извлекаем из стека все 8 E-регистров общего назначения
+
+ret
+HexMessage endp               ; конец функции вывода hex-сообщения
+;-------------------------------------------------------------------------
+end start                     ; конец программы
